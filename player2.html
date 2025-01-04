@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pong Game</title>
+  <style>
+    canvas {
+      border: 1px solid white;
+      display: block;
+      margin: 20px auto;
+      background-color: black;
+    }
+    body {
+      color: white;
+      text-align: center;
+      font-family: Arial, sans-serif;
+    }
+    button {
+      padding: 10px 20px;
+      margin-top: 20px;
+      font-size: 16px;
+      color: black;
+      background-color: white;
+    }
+    p {
+      color: black;
+    }
+	h1 {
+      color: black;
+    }
+    #status {
+      color: black;
+      font-size: 18px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Pong Game</h1>
+  <button id="startButton">게임하기</button>
+  <p>Use <strong>Up</strong> and <strong>Down</strong> arrow keys to move your paddle.</p>
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <div id="status"></div> <!-- 상태 메시지를 표시할 영역 -->
+
+  <script>
+    const startButton = document.getElementById('startButton');
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const role = 'player2'; // 기본 role 설정
+    let ws;
+    let gameState = null;
+
+    // 상태 메시지 업데이트 함수
+    function updateStatus(message) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.textContent = message;
+    }
+
+    // WebSocket 연결
+    function connectWebSocket() {
+      ws = new WebSocket('ws://localhost:8081/ws/pong/test');
+
+      ws.onopen = () => {
+        console.log('WebSocket 연결 성공');
+        updateStatus('연결되었습니다. 상대를 기다리고 있습니다...'); // 연결 메시지
+        canvas.style.display = 'block'; // 캔버스를 보이게 함
+      };
+
+      ws.onmessage = (event) => {
+        gameState = JSON.parse(event.data);
+        drawGameState();
+
+        // 게임 상태에 따라 메시지 업데이트
+        if (gameState.status === 'ready') {
+          updateStatus('상대를 기다리고 있습니다...');
+        } else if (gameState.status === 'playing') {
+          updateStatus('게임 중...');
+        } else if (gameState.status === 'finished') {
+          updateStatus('게임이 끝났습니다.');
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket 연결 종료');
+        updateStatus('게임이 종료되었습니다.');
+      };
+    }
+
+    // 게임 상태 그리기
+    function drawGameState() {
+      if (!gameState) return;
+
+      // Canvas 초기화
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 공 그리기
+      ctx.beginPath();
+      ctx.arc(gameState.ball.x, gameState.ball.y, 10, 0, Math.PI * 2);
+      ctx.fillStyle = 'white';
+      ctx.fill();
+      ctx.closePath();
+
+      // 플레이어1 패들 그리기
+      ctx.fillStyle = 'white';
+      ctx.fillRect(
+        10,
+        gameState.paddle_positions.player1,
+        10,
+        100
+      );
+
+      // 플레이어2 패들 그리기
+      ctx.fillRect(
+        canvas.width - 20,
+        gameState.paddle_positions.player2,
+        10,
+        100
+      );
+
+      // 플레이어 표시
+	  ctx.fillStyle = 'white';
+  	  ctx.font = '20px Arial';
+  	  ctx.fillText('Player 1', 20, 30);
+      ctx.fillText('Player 2', canvas.width - 90, 30);
+
+	  // 점수 표시
+      ctx.fillStyle = 'white';
+      ctx.font = '50px Arial';
+      ctx.fillText(`${gameState.left_score}`, 50, 90);
+      ctx.fillText(`${gameState.right_score}`, canvas.width - 90, 90);
+    }
+
+    // 패들 이동 명령 전송
+    function movePaddle(direction) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ role, move: direction }));
+      }
+    }
+
+    // 키보드 이벤트 처리
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowUp') {
+        movePaddle('up');
+      } else if (event.key === 'ArrowDown') {
+        movePaddle('down');
+      }
+    });
+
+    // 게임 시작 버튼 클릭 시 WebSocket 연결
+    startButton.addEventListener('click', () => {
+      connectWebSocket();
+      startButton.style.display = 'none'; // 버튼 숨기기
+    });
+  </script>
+</body>
+</html>

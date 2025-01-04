@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket Test</title>
+  <script>
+    // 페이지 로드 시 WebSocket 연결
+    window.onload = function() {
+      const socket = new WebSocket('ws://localhost:8000/ws/pong/'); // WebSocket 서버 주소
+
+      // WebSocket 연결 성공 시
+      socket.onopen = function(event) {
+        console.log('WebSocket is connected:', event);
+        socket.send(JSON.stringify({ message: 'Hello, Server!' })); // 서버로 메시지 보내기
+      };
+
+      // 서버에서 메시지를 받았을 때
+      socket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        console.log('Received from server:', data.message);
+      };
+
+      // WebSocket 연결 종료 시
+      socket.onclose = function(event) {
+        console.log('WebSocket connection closed:', event);
+      };
+
+      // WebSocket 오류 발생 시
+      socket.onerror = function(error) {
+        console.error('WebSocket error:', error);
+      };
+    };
+  </script>
+</head>
+<body>
+  <h1>WebSocket Test Page</h1>
+  <p>Check the browser console for WebSocket connection status and messages.</p>
+</body>
+</html>
